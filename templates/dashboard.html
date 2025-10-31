@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard for {{ display_name }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 2em;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .container { max-width: 95%; margin: auto; }
+        h1 { border-bottom: 2px solid #e9ecef; padding-bottom: 0.5em; }
+        
+        /* --- New Title Styles --- */
+        h1, h2, h3 { color: #343a40; }
+        h2 { font-weight: 600; }
+        h2 strong, h3 strong { color: #007bff; }
+        h3 {
+            font-weight: 500;
+            color: #495057;
+            margin-top: -1em;
+            margin-bottom: 2em;
+            word-break: break-all;
+        }
+        /* --- End New Title Styles --- */
+
+        .kpi-box {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            padding: 1.5em 2em;
+            border-radius: 12px;
+            margin-bottom: 2.5em;
+            display: inline-block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .kpi-box h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+            color: #495057;
+            font-weight: 600;
+        }
+        .kpi-box p {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #007bff;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2em;
+            margin-top: 2em;
+        }
+        .chart-container {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            padding: 2em;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        @media (max-width: 900px) {
+            .chart-grid { grid-template-columns: 1fr; }
+        }
+
+        .menu {
+            margin-top: 2.5em;
+            padding-top: 1.5em;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 20px;
+        }
+        .menu a {
+            text-decoration: none;
+            font-weight: 600;
+            color: #007bff;
+            font-size: 1em;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .menu a:hover {
+            background-color: #e9ecef;
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dashboard</h1>
+        <h2>Account: <strong>{{ display_name }}</strong></h2>
+        <h3>File: <strong>{{ filename }}</strong></h3>
+
+        <div class="kpi-box">
+            <h3>Total Estimated Yearly Cost (RAM)</h3>
+            <p>${{ "%.2f"|format(total_yearly_cost) }}</p>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-container">
+                <h3>Cost by {{ cluster_col_name | replace('_', ' ') | title }}</h3>
+                <canvas id="deploymentPieChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <h3>Cost by Provider</h3>
+                <canvas id="providerBarChart"></canvas>
+            </div>
+        </div>
+
+        <div class="menu">
+            <a href="{{ url_for('index') }}">🏠 Start Over</a>
+            <a href="{{ url_for('list_uploads') }}">📂 View All Uploads</a>
+            <a href="{{ url_for('select_deployment', filename=filename) }}">📋 Back to Deployments List</a>
+        </div>
+    </div>
+
+    <script>
+        // Data from Flask
+        const pieLabels = {{ pie_labels | tojson }};
+        const pieData = {{ pie_data | tojson }};
+        const barLabels = {{ bar_labels | tojson }};
+        const barData = {{ bar_data | tojson }};
+
+        // --- Render Pie Chart ---
+        new Chart(document.getElementById('deploymentPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    label: 'Cost',
+                    data: pieData,
+                    backgroundColor: [
+                        '#007bff', '#6c757d', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#343a40'
+                    ],
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'top', } } }
+        });
+
+        // --- Render Bar Chart ---
+        new Chart(document.getElementById('providerBarChart'), {
+            type: 'bar',
+            data: {
+                labels: barLabels,
+                datasets: [{
+                    label: 'Yearly Cost',
+                    data: barData,
+                    backgroundColor: '#007bff',
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                scales: { x: { beginAtZero: true } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    </script>
+</body>
+</html>
