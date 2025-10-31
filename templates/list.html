@@ -1,30 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uploaded Files</title>
+{% extends "base.html" %}
+
+{% block title %}Uploaded Files{% endblock %}
+
+{% block content %}
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 2em;
-            background-color: #f8f9fa;
-            color: #212529;
-        }
-        .container {
+        .list-container {
             max-width: 800px;
-            margin: auto;
+            margin: 2em auto;
         }
-        h1 {
-            color: #343a40;
-            text-align: center;
-            margin-bottom: 1.5em;
-        }
-        ul {
-            list-style: none;
-            padding: 0;
-        }
+        ul { list-style: none; padding: 0; }
         li {
             background: #ffffff;
             border: 1px solid #dee2e6;
@@ -44,39 +28,16 @@
             color: #007bff;
             font-size: 1.1em;
         }
-        li a:hover {
-            color: #0056b3;
-        }
+        li a:hover { color: #0056b3; }
         li span {
             display: block;
             font-size: 0.9em;
             color: #6c757d;
             margin-top: 0.25em;
         }
-        .menu {
-            margin-top: 2.5em;
-            text-align: center;
-        }
-        .menu a {
-            display: inline-block;
-            padding: 10px 15px;
-            font-size: 1em;
-            font-weight: bold;
-            color: #ffffff;
-            background-color: #007bff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: background-color 0.2s;
-        }
-        .menu a:hover {
-            background-color: #0056b3;
-        }
     </style>
-</head>
-<body>
-    <div class="container">
+
+    <div class="list-container">
         <h1>Uploaded Files</h1>
         
         <ul>
@@ -88,13 +49,8 @@
                     <span>Original File: {{ upload.RowKey }}</span>
                 </li>
             {% else %}
-                <li>No files uploaded yet.</li>
+                <li class="card">No files uploaded yet.</li>
             {% endfor %}
-            </ul>
-
-        <div class="menu">
-            <a href="{{ url_for('index') }}">⬆️ Upload New File</a>
-        </div>
+        </ul>
     </div>
-</body>
-</html>
+{% endblock %}

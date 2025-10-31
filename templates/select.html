@@ -1,25 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Deployment</title>
+{% extends "base.html" %}
+
+{% block title %}Select Deployment{% endblock %}
+
+{% block content %}
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 2em;
-            background-color: #f8f9fa;
-            color: #212529;
-        }
-        .container {
+        .select-container {
             max-width: 800px;
-            margin: auto;
-        }
-        h1 {
-            color: #343a40;
-            text-align: center;
-            margin-bottom: 1.5em;
+            margin: 2em auto;
         }
         h2 {
             color: #6c757d;
@@ -29,10 +16,7 @@
             margin-bottom: 2em;
             word-break: break-all;
         }
-        ul {
-            list-style: none;
-            padding: 0;
-        }
+        ul { list-style: none; padding: 0; }
         li {
             background: #ffffff;
             border: 1px solid #dee2e6;
@@ -52,39 +36,35 @@
             color: #007bff;
             font-size: 1.1em;
         }
-        li a:hover {
-            color: #0056b3;
-        }
-        .menu {
-            margin-top: 2.5em;
+        li a:hover { color: #0056b3; }
+
+        /* New button for dashboard */
+        .dashboard-link {
             text-align: center;
-            padding-top: 1.5em;
-            border-top: 1px solid #e9ecef;
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
+            margin: 2em 0;
+            padding: 1.5em;
+            background: #e6f7ff;
+            border: 1px solid #b6e0ff;
+            border-radius: 8px;
         }
-        .menu a {
+        .dashboard-link a {
             text-decoration: none;
             font-weight: 600;
-            color: #007bff;
-            font-size: 1em;
-            padding: 8px 12px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-        .menu a:hover {
-            background-color: #e9ecef;
+            font-size: 1.2em;
             color: #0056b3;
         }
     </style>
-</head>
-<body>
-    <div class="container">
+
+    <div class="select-container">
         <h1>Select a Deployment</h1>
         <h2>File: {{ filename }}</h2>
         
+        <div class="dashboard-link">
+            <a href="{{ url_for('dashboard', filename=filename) }}">
+                📊 View Summary Dashboard for this File
+            </a>
+        </div>
+
         <ul>
             {% for deployment in deployments %}
                 <li>
@@ -93,15 +73,8 @@
                     </a>
                 </li>
             {% else %}
-                <li>No deployments found in this file.</li>
+                <li class="card">No deployments found in this file.</li>
             {% endfor %}
         </ul>
-
-        <div class="menu">
-            <a href="{{ url_for('index') }}">🏠 Start Over</a>
-            <a href="{{ url_for('list_uploads') }}">📂 Back to All Uploads</a>
-            <a href="{{ url_for('dashboard', filename=filename) }}">📊 View Dashboard</a>
-        </div>
-        </div>
-</body>
-</html>
+    </div>
+{% endblock %}

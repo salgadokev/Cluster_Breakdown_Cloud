@@ -1,36 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Cost Report</title>
+{% extends "base.html" %}
+
+{% block title %}Upload Report{% endblock %}
+
+{% block content %}
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 2em;
-            background-color: #f8f9fa;
-            color: #212529;
-            display: grid;
-            place-items: center;
-            min-height: 90vh;
-        }
-        .container {
+        /* Center the upload box */
+        .upload-container {
             max-width: 500px;
             width: 100%;
-            margin: auto;
-            padding: 2.5em;
-            background-color: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin: 4em auto;
             text-align: center;
         }
-        h1 {
-            color: #343a40;
-            margin-top: 0;
-        }
-        
         .form-group {
             text-align: left;
             margin-bottom: 1.5em;
@@ -48,10 +28,7 @@
             border-radius: 8px;
             box-sizing: border-box; 
         }
-
-        input[type="file"] {
-            display: none;
-        }
+        input[type="file"] { display: none; }
         .file-label {
             display: block; 
             padding: 10px 15px;
@@ -64,19 +41,13 @@
             font-weight: 500;
             color: #495057;
         }
-        .file-label:hover {
-            background-color: #e9ecef;
-        }
-
-        /* --- NEW STYLE: This is the "preview" --- */
+        .file-label:hover { background-color: #e9ecef; }
         .file-label.file-selected {
             background-color: #e6f7ff;
             border-color: #007bff;
             color: #0056b3;
             font-weight: 600;
         }
-        /* --- END NEW STYLE --- */
-
         input[type="submit"] {
             display: block;
             width: 100%;
@@ -90,26 +61,11 @@
             cursor: pointer;
             transition: background-color 0.2s;
         }
-        input[type="submit"]:hover {
-            background-color: #0056b3;
-        }
-        .nav {
-            margin-top: 2em;
-            text-align: center;
-        }
-        .nav a {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .nav a:hover {
-            text-decoration: underline;
-        }
+        input[type="submit"]:hover { background-color: #0056b3; }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Upload Your Usage CSV</h1>
+
+    <div class="upload-container card">
+        <h1>Upload Your Cost CSV</h1>
         <form action="/upload" method="post" enctype="multipart/form-data">
             
             <div class="form-group">
@@ -124,10 +80,6 @@
             
             <input type="submit" value="Upload & Analyze">
         </form>
-
-        <div class="nav">
-            <a href="{{ url_for('list_uploads') }}">📂 View All Uploaded Files</a>
-        </div>
     </div>
 
     <script>
@@ -137,15 +89,11 @@
 
             fileInput.addEventListener('change', function() {
                 if (fileInput.files.length > 0) {
-                    // Get the filename
                     const fileName = fileInput.files[0].name;
-                    // Update the label text
                     fileLabel.innerHTML = '✅ Selected: ' + fileName;
-                    // Add the "selected" class for styling
                     fileLabel.classList.add('file-selected');
                 }
             });
         });
     </script>
-    </body>
-</html>
+{% endblock %}

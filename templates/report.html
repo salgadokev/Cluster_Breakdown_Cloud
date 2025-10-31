@@ -1,40 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cost Report for {{ display_name }}</title>
+{% extends "base.html" %}
+
+{% block title %}Report: {{ deployment }}{% endblock %}
+
+{% block content %}
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 2em;
-            background-color: #f8f9fa;
-            color: #212529;
-        }
-        h1, h2, h3 { 
-            color: #343a40;
-        }
-        h1 {
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 0.5em;
-        }
-        h2 {
-            font-weight: 600;
-        }
-        h2 strong, h3 strong {
-            color: #007bff;
-        }
-        h3 {
-            font-weight: 500;
-            color: #495057;
-            margin-top: -1em;
-            margin-bottom: 2em;
-        }
-        .container {
-            max-width: 95%;
-            margin: auto;
-        }
+        h3 { margin: 0 0 1.5em 0; } /* Override base h3 */
         .totals {
             background: #ffffff;
             border: 1px solid #dee2e6;
@@ -66,10 +36,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
+        table { border-collapse: collapse; width: 100%; }
         th, td {
             border-bottom: 1px solid #dee2e6;
             padding: 12px 15px;
@@ -84,82 +51,46 @@
             font-size: 0.85em;
             letter-spacing: 0.5px;
         }
-        tr:last-child td {
-            border-bottom: none;
-        }
-        tr:hover {
-            background-color: #f1f3f5;
-        }
-        .menu {
-            margin-top: 2.5em;
-            padding-top: 1.5em;
-            border-top: 1px solid #e9ecef;
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap; 
-        }
-        .menu a {
-            text-decoration: none;
-            font-weight: 600;
-            color: #007bff;
-            font-size: 1em;
-            padding: 8px 12px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-        .menu a:hover {
-            background-color: #e9ecef;
-            color: #0056b3;
-        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #f1f3f5; }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Cost Report</h1>
-        <h2>Account: <strong>{{ display_name }}</strong></h2>
-        <h3>Deployment: <strong>{{ deployment }}</strong> (Compute Only)</h3>
-        
-        <div class="totals">
-            <h3>Cost Rate Totals</h3>
-            <p>Total per Hour: <strong>${{ "%.4f"|format(totals.hour) }}</strong></p>
-            <p>Total per Day: <strong>${{ "%.4f"|format(totals.day) }}</strong></p>
-            <p>Total per Year: <strong>${{ "%.4f"|format(totals.year) }}</strong></p>
-        </div>
-        
-        <h2>Component Breakdown</h2>
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        {% for col in columns %}
-                            <th>{{ col.replace('_', ' ') }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in rows %}
-                    <tr> 
-                        {% for col in columns %}
-                            <td>
-                                {% if col in ['Cost per Hour', 'Cost per Day', 'Cost per Year'] %}
-                                    ${{ "%.4f"|format(row[col]) }}
-                                {% else %}
-                                    {{ row[col] }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="menu">
-            <a href="{{ url_for('index') }}">🏠 Start Over</a>
-            <a href="{{ url_for('list_uploads') }}">📂 View All Uploads</a>
-            <a href="{{ url_for('dashboard', filename=filename) }}">📊 View Dashboard</a>
-            <a href="{{ url_for('select_deployment', filename=filename) }}">📋 Back to Deployments</a>
-        </div>
+
+    <h1>Cost Report</h1>
+    <h2>Account: <strong>{{ display_name }}</strong></h2>
+    <h3>Deployment: <strong>{{ deployment }}</strong> (RAM Hours Only)</h3>
+    
+    <div class="totals">
+        <h3>Cost Rate Totals</h3>
+        <p>Total per Hour: <strong>${{ "%.4f"|format(totals.hour) }}</strong></p>
+        <p>Total per Day: <strong>${{ "%.4f"|format(totals.day) }}</strong></p>
+        <p>Total per Year: <strong>${{ "%.4f"|format(totals.year) }}</strong></p>
     </div>
-</body>
-</html>
+    
+    <h2>Component Breakdown</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    {% for col in columns %}
+                        <th>{{ col.replace('_', ' ') }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr> 
+                    {% for col in columns %}
+                        <td>
+                            {% if col in ['Cost per Hour', 'Cost per Day', 'Cost per Year'] %}
+                                ${{ "%.4f"|format(row[col]) }}
+                            {% else %}
+                                {{ row[col] }}
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
