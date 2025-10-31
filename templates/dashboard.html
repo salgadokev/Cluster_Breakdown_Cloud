@@ -37,7 +37,7 @@
             border: 1px solid #dee2e6;
             padding: 2em;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0,0,m,0.05);
         }
         @media (max-width: 900px) {
             .chart-grid { grid-template-columns: 1fr; }
@@ -55,7 +55,7 @@
 
     <div class="chart-grid">
         <div class="chart-container">
-            <h3>Cost by {{ cluster_col_name | replace('_', ' ') | title }}</h3>
+            <h3>Top 5 Cost by {{ cluster_col_name | replace('_', ' ') | title }}</h3>
             <canvas id="deploymentPieChart"></canvas>
         </div>
         

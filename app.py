@@ -26,7 +26,7 @@ except Exception as e:
     print(f"CRITICAL: Failed to initialize Azure clients. Check Connection Strings. {e}")
 
 
-# --- HELPER FUNCTION (with typo fix) ---
+# --- HELPER FUNCTION ---
 def _get_full_parsed_df(filename):
     """
     Downloads a single CSV from blob, parses it, and returns the
@@ -39,7 +39,6 @@ def _get_full_parsed_df(filename):
 
     df.columns = df.columns.str.strip()
     
-    # --- Find cluster column ---
     possible_cols = ['Deployment name', 'Cluster Name', 'Cluster', 'ClusterName']
     cluster_col = next((c for c in possible_cols if c in df.columns), None)
     if not cluster_col:
@@ -48,7 +47,6 @@ def _get_full_parsed_df(filename):
     if cluster_col != 'Deployment name':
         df['Deployment name'] = df[cluster_col]
         
-    # --- Parsing Logic ---
     if 'SKU Name' in df.columns:
         parts = df['SKU Name'].str.split('_', expand=True, n=4)
         for i in range(5):
@@ -71,7 +69,6 @@ def _get_full_parsed_df(filename):
             df['Size in GB'] / df['Number of Nodes'],
             df['Size in GB']
         )
-        # --- FIX: Corrected typo 'Size inGB' to 'Size in GB' ---
         df['Size in GB'] = df['Size in GB'].round(0).astype(int)
     else:
         df['Tier'] = 'Unknown'
@@ -82,7 +79,6 @@ def _get_full_parsed_df(filename):
         df['Size in GB'] = 0
         df['Number of Nodes'] = 0
 
-    # --- Filtering and Calculation ---
     df['Component'] = df.get('Usage type', 'Unknown').astype(str).fillna('Unknown').str.strip()
     df = df[df['Component'].str.lower() == 'ram hours'].copy() 
     
@@ -107,16 +103,13 @@ def index():
     return render_template('upload.html')
 
 
-# --- NEW DASHBOARD ROUTE (FILE-SPECIFIC) ---
 @app.route('/dashboard/<filename>')
 def dashboard(filename):
     """Shows the dashboard for a SINGLE file."""
     try:
-        # 1. Get the single, parsed DataFrame
         master_df = _get_full_parsed_df(filename)
 
-        # 2. Get the display_name from Cosmos
-        display_name = "Dashboard" # Default
+        display_name = "Dashboard"
         try:
             entity = table_client.get_entity(partition_key="Uploads", row_key=filename)
             if entity:
@@ -124,18 +117,33 @@ def dashboard(filename):
         except Exception as e:
             print(f"Could not find display_name in Cosmos: {e}")
 
-        # 3. Calculate dashboard KPIs
         total_yearly_cost = master_df['Cost per Year'].sum()
 
-        # Pie Chart: By Deployment
+        # --- START OF TOP 5 LOGIC ---
+        # Pie Chart: Top 5 By Deployment
         by_deployment = master_df.groupby('Deployment name')['Cost per Year'].sum().round(2)
         by_deployment = by_deployment[by_deployment > 0] # Remove 0 cost items
-        pie_labels = by_deployment.index.tolist()
-        pie_data = by_deployment.values.tolist()
+        
+        # Sort by cost (descending)
+        by_deployment = by_deployment.sort_values(ascending=False)
+        
+        # Get Top 5
+        top_5 = by_deployment.head(5).copy()
+        
+        # Get sum of all others
+        others_sum = by_deployment.iloc[5:].sum()
+        
+        # Add "Others" category if it has value
+        if others_sum > 0:
+            top_5['Others'] = others_sum
+            
+        pie_labels = top_5.index.tolist()
+        pie_data = top_5.values.tolist()
+        # --- END OF TOP 5 LOGIC ---
 
         # Bar Chart: By Provider
         by_provider = master_df.groupby('Provider')['Cost per Year'].sum().round(2)
-        by_provider = by_provider[by_provider > 0] # Remove 0 cost items
+        by_provider = by_provider[by_provider > 0]
         bar_labels = by_provider.index.tolist()
         bar_data = by_provider.values.tolist()
 
@@ -146,14 +154,13 @@ def dashboard(filename):
                                bar_labels=bar_labels,
                                bar_data=bar_data,
                                cluster_col_name='Deployment name',
-                               display_name=display_name, # Pass new var
-                               filename=filename # Pass filename for nav
+                               display_name=display_name,
+                               filename=filename
                                )
 
     except Exception as e:
         print(f"Error generating dashboard for {filename}: {e}")
         return f"Error generating dashboard: {e}", 500
-# --- END NEW ROUTE ---
 
 
 @app.route('/upload', methods=['POST'])
@@ -199,8 +206,6 @@ def upload_file():
             print(f"Error logging to Cosmos Table: {e}")
             return "File logging failed", 500
 
-        # --- This is the correct redirect ---
-        # It sends the user to the select page after uploading.
         return redirect(url_for('select_deployment', filename=filename))
         
     return "File upload failed", 500
@@ -322,7 +327,7 @@ def report(filename, cluster_col, deployment):
         final_columns = [c for c in preferred_order if c in df.columns]
         df_final = df[final_columns]
         
-        display_name = deployment # Default
+        display_name = deployment
         try:
             entity = table_client.get_entity(partition_key="Uploads", row_key=filename)
             if entity:
