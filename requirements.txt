@@ -1,0 +1,6 @@
+flask
+pandas
+numpy
+gunicorn
+azure-storage-blob
+azure-data-tables
