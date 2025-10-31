@@ -47,14 +47,12 @@
         li a:hover {
             color: #0056b3;
         }
-        /* --- NEW: Style for sub-text --- */
         li span {
             display: block;
             font-size: 0.9em;
             color: #6c757d;
             margin-top: 0.25em;
         }
-        /* --- END NEW --- */
         .menu {
             margin-top: 2.5em;
             text-align: center;
@@ -84,10 +82,10 @@
         <ul>
             {% for upload in uploads %}
                 <li>
-                    <a href="{{ url_for('select_deployment', filename=upload.original_filename) }}">
+                    <a href="{{ url_for('select_deployment', filename=upload.RowKey) }}">
                         {{ upload.display_name }}
                     </a>
-                    <span>Original File: {{ upload.original_filename }}</span>
+                    <span>Original File: {{ upload.RowKey }}</span>
                 </li>
             {% else %}
                 <li>No files uploaded yet.</li>
