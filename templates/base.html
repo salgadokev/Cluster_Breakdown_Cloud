@@ -103,9 +103,8 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="{{ url_for('index') }}" class="navbar-brand">🧮 ECU Breakdown Tool</a>
+        <a href="{{ url_for('index') }}" class="navbar-brand">🏠 Cost Analyzer</a>
         <div class="navbar-nav">
-            <a href="{{ url_for('dashboard', filename='_default') }}">📊 Dashboard</a>
             <a href="{{ url_for('list_uploads') }}">📂 View Uploads</a>
             <a href="{{ url_for('index') }}">⬆️ New Upload</a>
         </div>
@@ -120,12 +119,8 @@
     </main>
 
     <script>
-        // Get the loader
         const loader = document.getElementById('loader');
 
-        // Find all links and forms that should trigger the loader
-        // 'a:not([href^="#"])' = all links that don't just point to another part of the page
-        // 'form' = all forms
         const triggers = document.querySelectorAll('a:not([href^="#"]), form');
 
         triggers.forEach(trigger => {
@@ -137,10 +132,23 @@
             });
         });
 
-        // Hide loader when the page is fully loaded (for back button, etc.)
-        window.addEventListener('load', () => {
+        // --- START OF BUG FIX ---
+        // This function hides the loader
+        function hideLoader() {
             loader.style.display = 'none';
+        }
+
+        // Hide loader on initial page load
+        window.addEventListener('load', hideLoader);
+        
+        // Hide loader when page is shown from back/forward cache
+        window.addEventListener('pageshow', function(event) {
+            // event.persisted is true if page is from bfcache
+            if (event.persisted) {
+                hideLoader();
+            }
         });
+        // --- END OF BUG FIX ---
     </script>
 </body>
 </html>
