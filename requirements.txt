@@ -2,5 +2,5 @@ flask
 pandas
 numpy
 gunicorn
-azure-storage-blob
-azure-data-tables
+google-cloud-storage
+google-cloud-firestore

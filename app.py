@@ -6,35 +6,35 @@ import os
 import io
 import datetime
 
-from azure.storage.blob import BlobServiceClient
-from azure.data.tables import TableServiceClient, UpdateMode
+from google.cloud import storage
+from google.cloud import firestore
 
 app = Flask(__name__)
 
-# --- Azure Configuration ---
+# --- GCP Configuration ---
 try:
-    STORAGE_CONN_STR = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
-    COSMOS_CONN_STR = os.environ.get('AZURE_COSMOS_CONNECTION_STRING')
-    CONTAINER_NAME = "cost-reports"
-    TABLE_NAME = "costReportLog"
-
-    blob_service_client = BlobServiceClient.from_connection_string(STORAGE_CONN_STR)
-    table_service_client = TableServiceClient.from_connection_string(COSMOS_CONN_STR)
-    table_client = table_service_client.get_table_client(TABLE_NAME)
+    PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
+    BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'cost-reports')
+    
+    # Initialize GCS and Firestore clients
+    storage_client = storage.Client(project=PROJECT_ID)
+    bucket = storage_client.bucket(BUCKET_NAME)
+    db = firestore.Client(project=PROJECT_ID)
+    collection_name = "costReportLog"
     
 except Exception as e:
-    print(f"CRITICAL: Failed to initialize Azure clients. Check Connection Strings. {e}")
+    print(f"CRITICAL: Failed to initialize GCP clients. Check credentials and environment variables. {e}")
 
 
 # --- HELPER FUNCTION ---
 def _get_full_parsed_df(filename):
     """
-    Downloads a single CSV from blob, parses it, and returns the
+    Downloads a single CSV from GCS, parses it, and returns the
     full, processed DataFrame (filtered only for RAM Hours).
     """
-    blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=filename)
-    downloader = blob_client.download_blob()
-    stream = io.BytesIO(downloader.readall())
+    blob = bucket.blob(filename)
+    data = blob.download_as_bytes()
+    stream = io.BytesIO(data)
     df = pd.read_csv(stream)
 
     df.columns = df.columns.str.strip()
@@ -111,11 +111,11 @@ def dashboard(filename):
 
         display_name = "Dashboard"
         try:
-            entity = table_client.get_entity(partition_key="Uploads", row_key=filename)
-            if entity:
-                display_name = entity.get('display_name', filename)
+            doc = db.collection(collection_name).document(filename).get()
+            if doc.exists:
+                display_name = doc.get('display_name', filename)
         except Exception as e:
-            print(f"Could not find display_name in Cosmos: {e}")
+            print(f"Could not find display_name in Firestore: {e}")
 
         total_yearly_cost = master_df['Cost per Year'].sum()
 
@@ -165,7 +165,7 @@ def dashboard(filename):
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """Handles file uploads, saves to Blob Storage, and logs to Cosmos Table."""
+    """Handles file uploads, saves to GCS, and logs to Firestore."""
     if 'file' not in request.files:
         return "No file part", 400
     
@@ -179,11 +179,11 @@ def upload_file():
         filename = file.filename
         
         try:
-            blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=filename)
-            blob_client.upload_blob(file.stream, overwrite=True)
+            blob = bucket.blob(filename)
+            blob.upload_from_string(file.read(), content_type='text/csv')
         except Exception as e:
-            print(f"Error uploading to Blob Storage: {e}")
-            return "File upload to Blob Storage failed", 500
+            print(f"Error uploading to GCS: {e}")
+            return "File upload to GCS failed", 500
 
         try:
             match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
@@ -192,18 +192,16 @@ def upload_file():
             display_name = f"{account_name}_{extracted_date}"
             upload_timestamp = datetime.datetime.utcnow().isoformat()
 
-            log_entity = {
-                'PartitionKey': 'Uploads', 
-                'RowKey': filename,
+            log_data = {
                 'account_name': account_name,
                 'extracted_date': extracted_date,
                 'display_name': display_name,
                 'upload_timestamp': upload_timestamp
             }
 
-            table_client.upsert_entity(entity=log_entity, mode=UpdateMode.MERGE)
+            db.collection(collection_name).document(filename).set(log_data, merge=True)
         except Exception as e:
-            print(f"Error logging to Cosmos Table: {e}")
+            print(f"Error logging to Firestore: {e}")
             return "File logging failed", 500
 
         return redirect(url_for('select_deployment', filename=filename))
@@ -213,29 +211,29 @@ def upload_file():
 
 @app.route('/list')
 def list_uploads():
-    """Shows a page listing all uploaded files from the Cosmos Table."""
+    """Shows a page listing all uploaded files from Firestore."""
     uploads_list = []
     try:
-        entities = table_client.list_entities()
-        uploads_list = list(entities)
+        docs = db.collection(collection_name).stream()
+        uploads_list = [doc.to_dict() for doc in docs]
         uploads_list = sorted(
             uploads_list, 
             key=lambda x: x.get('upload_timestamp', ''), 
             reverse=True
         )
     except Exception as e:
-        print(f"Error reading from Cosmos Table: {e}")
+        print(f"Error reading from Firestore: {e}")
         
     return render_template('list.html', uploads=uploads_list)
 
 
 @app.route('/select/<filename>')
 def select_deployment(filename):
-    """Shows a list of unique 'Deployment name' values from the Blob CSV."""
+    """Shows a list of unique 'Deployment name' values from the GCS CSV."""
     try:
-        blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=filename)
-        downloader = blob_client.download_blob()
-        stream = io.BytesIO(downloader.readall())
+        blob = bucket.blob(filename)
+        data = blob.download_as_bytes()
+        stream = io.BytesIO(data)
         df = pd.read_csv(stream)
 
         df.columns = df.columns.str.strip()
@@ -255,16 +253,16 @@ def select_deployment(filename):
             cluster_col=cluster_col
         )
     except Exception as e:
-        return f"Error processing file from Blob: {e}", 500
+        return f"Error processing file from GCS: {e}", 500
 
 
 @app.route('/report/<filename>/<cluster_col>/<deployment>')
 def report(filename, cluster_col, deployment):
-    """Parses the Blob CSV and displays the cost report."""
+    """Parses the GCS CSV and displays the cost report."""
     try:
-        blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=filename)
-        downloader = blob_client.download_blob()
-        stream = io.BytesIO(downloader.readall())
+        blob = bucket.blob(filename)
+        data = blob.download_as_bytes()
+        stream = io.BytesIO(data)
         df = pd.read_csv(stream)
 
         df.columns = df.columns.str.strip()
@@ -329,11 +327,11 @@ def report(filename, cluster_col, deployment):
         
         display_name = deployment
         try:
-            entity = table_client.get_entity(partition_key="Uploads", row_key=filename)
-            if entity:
-                display_name = entity.get('display_name', deployment)
+            doc = db.collection(collection_name).document(filename).get()
+            if doc.exists:
+                display_name = doc.get('display_name', deployment)
         except Exception as e:
-            print(f"Could not find display_name in Cosmos: {e}")
+            print(f"Could not find display_name in Firestore: {e}")
 
         return render_template(
             'report.html',
