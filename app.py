@@ -179,11 +179,15 @@ def upload_file():
         filename = file.filename
         
         try:
+            print(f"DEBUG: Attempting upload to bucket={BUCKET_NAME}, project={PROJECT_ID}, filename={filename}")
             blob = bucket.blob(filename)
             blob.upload_from_string(file.read(), content_type='text/csv')
+            print(f"DEBUG: Successfully uploaded {filename} to GCS")
         except Exception as e:
-            print(f"Error uploading to GCS: {e}")
-            return "File upload to GCS failed", 500
+            error_msg = f"Error uploading to GCS: {e}"
+            print(error_msg)
+            print(f"DEBUG: BUCKET_NAME={BUCKET_NAME}, PROJECT_ID={PROJECT_ID}")
+            return f"File upload to GCS failed: {str(e)}", 500
 
         try:
             match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
