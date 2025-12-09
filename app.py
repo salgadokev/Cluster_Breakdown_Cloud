@@ -12,26 +12,19 @@ from google.cloud import firestore
 app = Flask(__name__)
 
 # --- GCP Configuration ---
-try:
-    PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
-    BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'cost-reports')
-    
-    # Initialize GCS and Firestore clients
-    storage_client = storage.Client(project=PROJECT_ID)
-    bucket = storage_client.bucket(BUCKET_NAME)
-    db = firestore.Client(project=PROJECT_ID)
-    collection_name = "costReportLog"
-    
-except Exception as e:
-    print(f"CRITICAL: Failed to initialize GCP clients. Check credentials and environment variables. {e}")
+PROJECT_ID = os.environ.get('GCP_PROJECT_ID')
+BUCKET_NAME = os.environ.get('GCP_BUCKET_NAME', 'cost-reports')
+
+# Initialize GCS and Firestore clients
+storage_client = storage.Client(project=PROJECT_ID)
+bucket = storage_client.bucket(BUCKET_NAME)
+db = firestore.Client(project=PROJECT_ID, database='cluster-breakdown')
+collection_name = "costReportLog"
 
 
 # --- HELPER FUNCTION ---
 def _get_full_parsed_df(filename):
-    """
-    Downloads a single CSV from GCS, parses it, and returns the
-    full, processed DataFrame (filtered only for RAM Hours).
-    """
+    """Downloads CSV from GCS, parses it, and returns processed DataFrame."""
     blob = bucket.blob(filename)
     data = blob.download_as_bytes()
     stream = io.BytesIO(data)
@@ -94,7 +87,6 @@ def _get_full_parsed_df(filename):
     final_columns = [c for c in preferred_order if c in df.columns]
     
     return df[final_columns]
-# --- END HELPER ---
 
 
 @app.route('/')
@@ -109,37 +101,27 @@ def dashboard(filename):
     try:
         master_df = _get_full_parsed_df(filename)
 
-        display_name = "Dashboard"
         try:
             doc = db.collection(collection_name).document(filename).get()
-            if doc.exists:
-                display_name = doc.get('display_name', filename)
+            display_name = doc.get('display_name', filename) if doc.exists else filename
         except Exception as e:
-            print(f"Could not find display_name in Firestore: {e}")
+            print(f"Could not retrieve display_name from Firestore: {e}")
+            display_name = filename
 
         total_yearly_cost = master_df['Cost per Year'].sum()
 
-        # --- START OF TOP 5 LOGIC ---
         # Pie Chart: Top 5 By Deployment
         by_deployment = master_df.groupby('Deployment name')['Cost per Year'].sum().round(2)
-        by_deployment = by_deployment[by_deployment > 0] # Remove 0 cost items
+        by_deployment = by_deployment[by_deployment > 0].sort_values(ascending=False)
         
-        # Sort by cost (descending)
-        by_deployment = by_deployment.sort_values(ascending=False)
-        
-        # Get Top 5
         top_5 = by_deployment.head(5).copy()
-        
-        # Get sum of all others
         others_sum = by_deployment.iloc[5:].sum()
         
-        # Add "Others" category if it has value
         if others_sum > 0:
             top_5['Others'] = others_sum
             
         pie_labels = top_5.index.tolist()
         pie_data = top_5.values.tolist()
-        # --- END OF TOP 5 LOGIC ---
 
         # Bar Chart: By Provider
         by_provider = master_df.groupby('Provider')['Cost per Year'].sum().round(2)
@@ -179,15 +161,11 @@ def upload_file():
         filename = file.filename
         
         try:
-            print(f"DEBUG: Attempting upload to bucket={BUCKET_NAME}, project={PROJECT_ID}, filename={filename}")
             blob = bucket.blob(filename)
             blob.upload_from_string(file.read(), content_type='text/csv')
-            print(f"DEBUG: Successfully uploaded {filename} to GCS")
         except Exception as e:
-            error_msg = f"Error uploading to GCS: {e}"
-            print(error_msg)
-            print(f"DEBUG: BUCKET_NAME={BUCKET_NAME}, PROJECT_ID={PROJECT_ID}")
-            return f"File upload to GCS failed: {str(e)}", 500
+            print(f"Error uploading to GCS: {e}")
+            return "File upload to GCS failed", 500
 
         try:
             match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
@@ -332,10 +310,9 @@ def report(filename, cluster_col, deployment):
         display_name = deployment
         try:
             doc = db.collection(collection_name).document(filename).get()
-            if doc.exists:
-                display_name = doc.get('display_name', deployment)
+            display_name = doc.get('display_name', deployment) if doc.exists else deployment
         except Exception as e:
-            print(f"Could not find display_name in Firestore: {e}")
+            print(f"Could not retrieve display_name from Firestore: {e}")
 
         return render_template(
             'report.html',

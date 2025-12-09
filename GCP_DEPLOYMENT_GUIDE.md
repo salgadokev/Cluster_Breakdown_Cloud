@@ -29,9 +29,9 @@ Replace `cost-reports` with your desired bucket name.
 
 #### B. Create a Firestore Database
 ```bash
-gcloud firestore databases create --region=us-central1
+gcloud firestore databases create --database=cluster-breakdown --location=us-central1 --type=firestore-native
 ```
-Choose a region appropriate for your location.
+Must use Firestore Native mode (not Datastore mode).
 
 ### 2. Set Environment Variables
 
@@ -39,7 +39,7 @@ Create a `.env` file or set environment variables in your deployment platform:
 
 ```bash
 export GCP_PROJECT_ID="your-gcp-project-id"
-export GCP_BUCKET_NAME="kev-breakdowntooly"
+export GCP_BUCKET_NAME="your-bucket-name"
 ```
 
 ### 3. Update Dependencies
@@ -165,7 +165,7 @@ gcloud app deploy
   ```python
   storage_client = storage.Client(project=PROJECT_ID)
   bucket = storage_client.bucket(BUCKET_NAME)
-  db = firestore.Client(project=PROJECT_ID)
+  db = firestore.Client(project=PROJECT_ID, database='cluster-breakdown')
   ```
 
 ### 3. Blob Operations
